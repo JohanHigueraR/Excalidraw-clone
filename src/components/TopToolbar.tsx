@@ -1,9 +1,9 @@
 "use client";
-import { useCanvasStore } from "@/store/canvasStore";
-import { Tool } from "@/types/types"
+import { useToolsStore } from "@/store/toolsStore";
+import { ToolType } from "@/types/types";
 import { Pencil, Square, Circle, Eraser, ArrowUpRight, Text, MousePointer, Minus } from "lucide-react";
 
-const tools: { name: Tool; icon: any; label: string }[] = [
+const tools: { name: ToolType; icon: any; label: string }[] = [
   { name: "select", icon: MousePointer, label: "Seleccionar" },
   { name: "pencil", icon: Pencil, label: "Lápiz" },
   { name: "rectangle", icon: Square, label: "Rectángulo" },
@@ -15,7 +15,7 @@ const tools: { name: Tool; icon: any; label: string }[] = [
 ];
 
 const TopToolbar = () => {
-  const { selectedTool, setSelectedTool } = useCanvasStore();
+  const { selectedTool, setSelectedTool } = useToolsStore();
 
   return (
     <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-white shadow-md flex gap-2 p-2 rounded-lg">

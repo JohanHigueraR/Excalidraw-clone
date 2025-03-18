@@ -1,53 +1,43 @@
-import { create } from "zustand";
-import { Path, Rectangle, Tool } from "@/types/types";
+import {create} from 'zustand';
 
-interface CanvasState {
-  selectedTool: Tool;
-  setSelectedTool: (tool: Tool) => void;
+type Tool = 'pencil' | 'rectangle'; // Agrega más herramientas según sea necesario
 
-  strokeColor: string;
-  strokeWidth: number;
-  setStrokeColor: (color: string) => void;
-  setStrokeWidth: (width: number) => void;
+type Element = {
+  type: Tool;
+  data: any; // Puedes ajustar el tipo de "data" según la herramienta
+};
 
-  paths: Path[];
-  addPath: (path: Path) => void;
-  updatePath: (id: string, points: { x: number; y: number }[]) => void;
-
-  rectangles: Rectangle[];
-  addRectangle: (rectangle: Rectangle) => void;
-  updateRectangle: (id: string, updates: Partial<Rectangle>) => void;
-
-  clearCanvas: () => void;
-}
+type CanvasState = {
+  tool: Tool;
+  elements: Element[];
+  history: Element[][]; // Para manejar el historial de acciones
+  setTool: (tool: Tool) => void;
+  addElement: (element: Element) => void;
+  undo: () => void;
+  redo: () => void;
+};
 
 export const useCanvasStore = create<CanvasState>((set) => ({
-  selectedTool: "pencil",
-  setSelectedTool: (tool) => set({ selectedTool: tool }),
-
-  strokeColor: "#000000",
-  strokeWidth: 3,
-  setStrokeColor: (color) => set({ strokeColor: color }),
-  setStrokeWidth: (width) => set({ strokeWidth: width }),
-
-  paths: [],
-  addPath: (path) => set((state) => ({ paths: [...state.paths, path] })),
-  updatePath: (id, points) =>
-    set((state) => ({
-      paths: state.paths.map((path) =>
-        path.id === id ? { ...path, points } : path
-      ),
-    })),
-
-  rectangles: [],
-  addRectangle: (rectangle) =>
-    set((state) => ({ rectangles: [...state.rectangles, rectangle] })),
-  updateRectangle: (id, updates) =>
-    set((state) => ({
-      rectangles: state.rectangles.map((rect) =>
-        rect.id === id ? { ...rect, ...updates } : rect
-      ),
-    })),
-
-  clearCanvas: () => set({ paths: [], rectangles: [] }),
+  tool: 'pencil',
+  elements: [],
+  history: [],
+  setTool: (tool) => set({ tool }),
+  addElement: (element) =>
+    set((state) => {
+      const newElements = [...state.elements, element];
+      const newHistory = [...state.history, state.elements]; // Guardar el estado anterior
+      return { elements: newElements, history: newHistory };
+    }),
+  undo: () =>
+    set((state) => {
+      if (state.history.length > 0) {
+        const previousElements = state.history[state.history.length - 1];
+        const newHistory = state.history.slice(0, -1);
+        return { elements: previousElements, history: newHistory };
+      }
+      return state;
+    }),
+  redo: () => {
+    // Implementar lógica para "rehacer" si es necesario
+  },
 }));

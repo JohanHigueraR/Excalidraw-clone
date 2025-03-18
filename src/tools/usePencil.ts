@@ -1,5 +1,6 @@
 import { RefObject, useRef } from "react";
 import getStroke from "perfect-freehand";
+import { useCanvasStore } from "@/store/canvasStore";
 
 const getSvgPathFromStroke = (stroke: number[][]) => {
   if (!stroke.length) return "";
@@ -40,8 +41,7 @@ export const usePencil = (
   const onMouseUp = () => {
     if (!isDrawing.current || !ctxRef.current || points.current.length === 0) return;
     isDrawing.current = false;
-
-    // Guardar el trazo en el historial para mantenerlo en pantalla
+  
     const stroke = getStroke(
       points.current.map((p) => [p.x, p.y]),
       {
@@ -51,11 +51,13 @@ export const usePencil = (
         streamline: 0.5,
       }
     );
-
+  
     const pathData = getSvgPathFromStroke(stroke);
-    const path = new Path2D(pathData);
-    history.current.push(path); // Agregamos el trazo al historial
-
+    useCanvasStore.getState().addElement({
+      type: 'pencil',
+      data: pathData,
+    });
+  
     points.current = [];
   };
 

@@ -1,4 +1,6 @@
 import { RefObject, useRef } from "react";
+import getStroke from "perfect-freehand";
+import {getSvgPathFromStroke} from '@/utils/getSvgPathFromStroke'
 import { useCanvasStore } from "@/store/canvasStore";
 
 export const useRectangle = (
@@ -8,8 +10,8 @@ export const useRectangle = (
   const isDrawing = useRef(false);
   const startPoint = useRef<{ x: number; y: number } | null>(null);
   const rect = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
-  const { addRectangle, strokeColor, strokeWidth } = useCanvasStore();
-
+  const history = useRef<Path2D[]>([]); // Guarda los trazos anteriores
+  
   const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!canvasRef.current || !ctxRef.current) return;
     isDrawing.current = true;
@@ -31,7 +33,12 @@ export const useRectangle = (
   const onMouseUp = () => {
     if (!isDrawing.current || !rect.current) return;
     isDrawing.current = false;
-    addRectangle({ id: crypto.randomUUID(), ...rect.current, strokeColor, strokeWidth });
+  
+    useCanvasStore.getState().addElement({
+      type: 'rectangle',
+      data: rect.current,
+    });
+  
     rect.current = null;
   };
 
@@ -41,8 +48,6 @@ export const useRectangle = (
     if (!ctxRef.current || !rect.current) return;
     const ctx = ctxRef.current;
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    ctx.strokeStyle = strokeColor;
-    ctx.lineWidth = strokeWidth;
     ctx.strokeRect(rect.current.x, rect.current.y, rect.current.width, rect.current.height);
   };
 

@@ -18,4 +18,4 @@ export type Rectangle = {
   fill?: string;
 };
 
-export type Tool = "select" | "pencil" | "rectangle" | "circle" | "arrow" | "line" | "eraser" | "text";
+export type ToolType = "select" | "pencil" | "rectangle" | "circle" | "arrow" | "line" | "eraser" | "text";
