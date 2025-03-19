@@ -1,71 +1,67 @@
 "use client";
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useCanvasStore } from '@/store/canvasStore';
 import { useToolsStore } from '@/store/toolsStore';
 import { usePencil } from '@/tools/usePencil';
 import { useRectangle } from '@/tools/useRectangle';
 
 const Canvas = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
+  const interactionCanvasRef = useRef<HTMLCanvasElement>(null);
+  const backgroundCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const interactionCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const { elements } = useCanvasStore();
   const { selectedTool } = useToolsStore();
 
-  // Inicializar el contexto del canvas y ajustar el tamaño
+  // Estado para almacenar las dimensiones del canvas
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  // Inicializar los contextos de los canvases y actualizar el tamaño
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const backgroundCanvas = backgroundCanvasRef.current;
+    const interactionCanvas = interactionCanvasRef.current;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    if (backgroundCanvas && interactionCanvas) {
+      const backgroundCtx = backgroundCanvas.getContext('2d');
+      const interactionCtx = interactionCanvas.getContext('2d');
 
-    ctxRef.current = ctx;
+      if (backgroundCtx && interactionCtx) {
+        backgroundCtxRef.current = backgroundCtx;
+        interactionCtxRef.current = interactionCtx;
 
-    // Función para ajustar el tamaño del canvas
-    const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
+        // Establecer el tamaño inicial del canvas
+        setCanvasSize({
+          width: window.innerWidth,
+          height: window.innerHeight,
+        });
 
-    // Ajustar el tamaño inicial
-    resizeCanvas();
+        // Escuchar el evento de redimensionamiento de la ventana
+        const handleResize = () => {
+          setCanvasSize({
+            width: window.innerWidth,
+            height: window.innerHeight,
+          });
+        };
 
-    // Escuchar el evento de redimensionamiento de la ventana
-    window.addEventListener('resize', resizeCanvas);
+        window.addEventListener('resize', handleResize);
 
-    // Limpiar el event listener al desmontar el componente
-    return () => {
-      window.removeEventListener('resize', resizeCanvas);
-    };
+        // Limpiar el event listener al desmontar el componente
+        return () => {
+          window.removeEventListener('resize', handleResize);
+        };
+      }
+    }
   }, []);
 
-  // Usar el hook correspondiente según la herramienta seleccionada
-  const pencilHandlers = usePencil(canvasRef, ctxRef);
-  const rectangleHandlers = useRectangle(canvasRef, ctxRef);
-
-  const getHandlers = () => {
-    switch (selectedTool) {
-      case 'pencil':
-        return pencilHandlers;
-      case 'rectangle':
-        return rectangleHandlers;
-      default:
-        return {};
-    }
-  };
-
-  const { onMouseDown, onMouseMove, onMouseUp, onMouseLeave } = getHandlers();
-
-  // Dibujar todos los elementos almacenados
+  // Redibujar el canvas de fondo cuando cambian los elementos
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !ctxRef.current) return;
-    const ctx = ctxRef.current;
+    const ctx = backgroundCtxRef.current;
+    if (!ctx) return;
+    console.log('redibujando canvas de fondo');
+    // Limpiar el canvas de fondo
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    // Limpiar el canvas antes de redibujar
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Dibujar todos los elementos
+    // Dibujar todos los elementos almacenados
     elements.forEach((element) => {
       if (element.type === 'pencil') {
         const path = new Path2D(element.data);
@@ -76,15 +72,48 @@ const Canvas = () => {
     });
   }, [elements]);
 
+  // Usar el hook correspondiente según la herramienta seleccionada
+  const pencilHandlers = usePencil(
+    interactionCanvasRef as React.RefObject<HTMLCanvasElement>,
+    interactionCtxRef as React.RefObject<CanvasRenderingContext2D>
+  );
+  const rectangleHandlers = useRectangle(
+    interactionCanvasRef as React.RefObject<HTMLCanvasElement>,
+    interactionCtxRef as React.RefObject<CanvasRenderingContext2D>
+  );
+
+  const getHandlers = () => {
+    switch (selectedTool) {
+      case 'pencil':
+        return pencilHandlers;
+      case 'rectangle':
+        return rectangleHandlers;
+      default:
+        return pencilHandlers;
+    }
+  };
+
+  const { onMouseDown, onMouseMove, onMouseUp, onMouseLeave } = getHandlers();
+
   return (
-    <canvas
-      className="bg-gray-400 w-full h-full"
-      ref={canvasRef}
-      onMouseDown={onMouseDown}
-      onMouseMove={onMouseMove}
-      onMouseUp={onMouseUp}
-      onMouseLeave={onMouseLeave}
-    />
+    <div className="relative w-full h-full">
+      <canvas
+        ref={backgroundCanvasRef}
+        className="absolute top-0 left-0 z-10 bg-gray-400"
+        width={canvasSize.width}
+        height={canvasSize.height}
+      />
+      <canvas
+        ref={interactionCanvasRef}
+        className="absolute top-0 left-0 z-20"
+        width={canvasSize.width}
+        height={canvasSize.height}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseLeave}
+      />
+    </div>
   );
 };
 

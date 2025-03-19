@@ -1,47 +1,33 @@
-import { RefObject, useRef } from "react";
-import getStroke from "perfect-freehand";
-import { useCanvasStore } from "@/store/canvasStore";
-
-const getSvgPathFromStroke = (stroke: number[][]) => {
-  if (!stroke.length) return "";
-  const d = stroke.reduce(
-    (acc, [x0, y0], i, arr) => {
-      const [x1, y1] = arr[(i + 1) % arr.length];
-      acc.push(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2);
-      return acc;
-    },
-    ["M", ...stroke[0], "Q"]
-  );
-  d.push("Z");
-  return d.join(" ");
-};
+import { RefObject, useRef } from 'react';
+import { useCanvasStore } from '@/store/canvasStore';
+import getStroke from 'perfect-freehand';
+import { getSvgPathFromStroke } from '@/utils/getSvgPathFromStroke';
 
 export const usePencil = (
-  canvasRef: RefObject<HTMLCanvasElement>,
-  ctxRef: RefObject<CanvasRenderingContext2D | null>
+  interactionCanvasRef: RefObject<HTMLCanvasElement>,
+  interactionCtxRef: RefObject<CanvasRenderingContext2D | null>
 ) => {
   const isDrawing = useRef(false);
   const points = useRef<{ x: number; y: number }[]>([]);
-  const history = useRef<Path2D[]>([]); // Guarda los trazos anteriores
 
   const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !ctxRef.current) return;
+    if (!interactionCanvasRef.current || !interactionCtxRef.current) return;
     isDrawing.current = true;
     const { offsetX, offsetY } = e.nativeEvent;
     points.current = [{ x: offsetX, y: offsetY }];
   };
 
   const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing.current || !canvasRef.current || !ctxRef.current) return;
+    if (!isDrawing.current || !interactionCanvasRef.current || !interactionCtxRef.current) return;
     const { offsetX, offsetY } = e.nativeEvent;
     points.current.push({ x: offsetX, y: offsetY });
     drawStroke();
   };
 
   const onMouseUp = () => {
-    if (!isDrawing.current || !ctxRef.current || points.current.length === 0) return;
+    if (!isDrawing.current || !interactionCtxRef.current || points.current.length === 0) return;
     isDrawing.current = false;
-  
+
     const stroke = getStroke(
       points.current.map((p) => [p.x, p.y]),
       {
@@ -51,28 +37,24 @@ export const usePencil = (
         streamline: 0.5,
       }
     );
-  
+
     const pathData = getSvgPathFromStroke(stroke);
     useCanvasStore.getState().addElement({
       type: 'pencil',
       data: pathData,
     });
-  
+
     points.current = [];
   };
 
   const onMouseLeave = onMouseUp;
 
   const drawStroke = () => {
-    if (!ctxRef.current) return;
-    const ctx = ctxRef.current;
+    if (!interactionCtxRef.current) return;
+    const ctx = interactionCtxRef.current;
 
-    // Limpiar solo la parte nueva, sin borrar trazos anteriores
+    // Limpiar solo el canvas de interacción
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    // Volver a dibujar todo el historial
-    ctx.fillStyle = "black";
-    history.current.forEach((path) => ctx.fill(path));
 
     // Dibujar el trazo actual
     if (points.current.length > 0) {

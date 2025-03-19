@@ -18,7 +18,7 @@ const TopToolbar = () => {
   const { selectedTool, setSelectedTool } = useToolsStore();
 
   return (
-    <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-white shadow-md flex gap-2 p-2 rounded-lg">
+    <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-white shadow-md flex gap-2 p-2 rounded-lg z-30">
       {tools.map((tool) => (
         <button
           key={tool.name}
