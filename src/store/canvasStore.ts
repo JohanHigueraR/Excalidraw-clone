@@ -1,18 +1,16 @@
-import {create} from 'zustand';
+import { create } from 'zustand';
+import { v4 as uuidv4 } from 'uuid';
+import { Element, ToolType} from '../types/types';
 
-type Tool = 'pencil' | 'rectangle'; // Agrega más herramientas según sea necesario
-
-type Element = {
-  type: Tool;
-  data: any; // Puedes ajustar el tipo de "data" según la herramienta
-};
 
 type CanvasState = {
-  tool: Tool;
+  tool: ToolType;
   elements: Element[];
   history: Element[][]; // Para manejar el historial de acciones
-  setTool: (tool: Tool) => void;
-  addElement: (element: Element) => void;
+  setTool: (tool: ToolType) => void;
+  addElement: (element: Omit<Element, 'id'>) => void; // No necesitas pasar el ID manualmente
+  updateElement: (id: string, data: any) => void; // Actualizar un elemento existente
+  deleteElement: (id: string) => void; // Eliminar un elemento existente
   undo: () => void;
   redo: () => void;
 };
@@ -22,12 +20,33 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   elements: [],
   history: [],
   setTool: (tool) => set({ tool }),
+
+  // Agregar un nuevo elemento con un ID único
   addElement: (element) =>
     set((state) => {
-      const newElements = [...state.elements, element];
+      const newElement = { ...element, id: uuidv4() }; // Generar un ID único
+      const newElements = [...state.elements, newElement];
       const newHistory = [...state.history, state.elements]; // Guardar el estado anterior
       return { elements: newElements, history: newHistory };
     }),
+
+  // Actualizar un elemento existente
+  updateElement: (id, data) =>
+    set((state) => {
+      const updatedElements = state.elements.map((element) =>
+        element.id === id ? { ...element, data } : element
+      );
+      return { elements: updatedElements };
+    }),
+
+  // Eliminar un elemento existente
+  deleteElement: (id) =>
+    set((state) => {
+      const updatedElements = state.elements.filter((element) => element.id !== id);
+      return { elements: updatedElements };
+    }),
+
+  // Deshacer la última acción
   undo: () =>
     set((state) => {
       if (state.history.length > 0) {
@@ -37,6 +56,8 @@ export const useCanvasStore = create<CanvasState>((set) => ({
       }
       return state;
     }),
+
+  // Rehacer la última acción (pendiente de implementar)
   redo: () => {
     // Implementar lógica para "rehacer" si es necesario
   },

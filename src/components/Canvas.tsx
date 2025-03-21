@@ -4,6 +4,8 @@ import { useCanvasStore } from '@/store/canvasStore';
 import { useToolsStore } from '@/store/toolsStore';
 import { usePencil } from '@/tools/usePencil';
 import { useRectangle } from '@/tools/useRectangle';
+import { useSelection } from '@/tools/useSelection';
+import { useQuadtree } from '@/tools/useQuadtree'; // Importar el hook useQuadtree
 
 const Canvas = () => {
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -13,8 +15,10 @@ const Canvas = () => {
   const { elements } = useCanvasStore();
   const { selectedTool } = useToolsStore();
 
-  // Estado para almacenar las dimensiones del canvas
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+  // Usar el hook useQuadtree para manejar el Quadtree
+  const quadtreeRef = useQuadtree(elements);
 
   // Inicializar los contextos de los canvases y actualizar el tamaño
   useEffect(() => {
@@ -29,13 +33,11 @@ const Canvas = () => {
         backgroundCtxRef.current = backgroundCtx;
         interactionCtxRef.current = interactionCtx;
 
-        // Establecer el tamaño inicial del canvas
         setCanvasSize({
           width: window.innerWidth,
           height: window.innerHeight,
         });
 
-        // Escuchar el evento de redimensionamiento de la ventana
         const handleResize = () => {
           setCanvasSize({
             width: window.innerWidth,
@@ -45,7 +47,6 @@ const Canvas = () => {
 
         window.addEventListener('resize', handleResize);
 
-        // Limpiar el event listener al desmontar el componente
         return () => {
           window.removeEventListener('resize', handleResize);
         };
@@ -57,11 +58,8 @@ const Canvas = () => {
   useEffect(() => {
     const ctx = backgroundCtxRef.current;
     if (!ctx) return;
-    console.log('redibujando canvas de fondo');
-    // Limpiar el canvas de fondo
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    // Dibujar todos los elementos almacenados
     elements.forEach((element) => {
       if (element.type === 'pencil') {
         const path = new Path2D(element.data);
@@ -72,7 +70,6 @@ const Canvas = () => {
     });
   }, [elements]);
 
-  // Usar el hook correspondiente según la herramienta seleccionada
   const pencilHandlers = usePencil(
     interactionCanvasRef as React.RefObject<HTMLCanvasElement>,
     interactionCtxRef as React.RefObject<CanvasRenderingContext2D>
@@ -81,15 +78,42 @@ const Canvas = () => {
     interactionCanvasRef as React.RefObject<HTMLCanvasElement>,
     interactionCtxRef as React.RefObject<CanvasRenderingContext2D>
   );
+  const selectHandlers = useSelection(
+    interactionCanvasRef as React.RefObject<HTMLCanvasElement>,
+    interactionCtxRef as React.RefObject<CanvasRenderingContext2D>,
+    quadtreeRef // Pasar el Quadtree al hook useSelection
+  );
 
   const getHandlers = () => {
     switch (selectedTool) {
       case 'pencil':
-        return pencilHandlers;
+        return {
+          ...pencilHandlers,
+          onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => {
+            pencilHandlers.onMouseDown(e);
+          },
+        };
       case 'rectangle':
-        return rectangleHandlers;
+        return {
+          ...rectangleHandlers,
+          onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => {
+            rectangleHandlers.onMouseDown(e);
+          },
+        };
+      case 'select':
+        return {
+          ...selectHandlers,
+          onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => {
+            selectHandlers.onMouseDown(e);
+          },
+        };
       default:
-        return pencilHandlers;
+        return {
+          ...selectHandlers,
+          onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => {
+            selectHandlers.onMouseDown(e);
+          },
+        };
     }
   };
 
@@ -118,3 +142,4 @@ const Canvas = () => {
 };
 
 export default Canvas;
+

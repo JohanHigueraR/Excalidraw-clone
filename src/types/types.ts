@@ -18,4 +18,11 @@ export type Rectangle = {
   fill?: string;
 };
 
+
 export type ToolType = "select" | "pencil" | "rectangle" | "circle" | "arrow" | "line" | "eraser" | "text";
+export type Element = {
+  id: string; // ID único para cada elemento
+  type: ToolType;
+  data: any; 
+  points: { x: number; y: number; width: number; height: number }; // Puntos de control para el trazo
+};

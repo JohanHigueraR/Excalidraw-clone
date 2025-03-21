@@ -35,6 +35,7 @@ export const useRectangle = (
     useCanvasStore.getState().addElement({
       type: 'rectangle',
       data: rect.current,
+      points: rect.current
     });
 
     rect.current = null;
