@@ -19,7 +19,8 @@ export type Rectangle = {
 };
 
 
-export type ToolType = "select" | "pencil" | "rectangle" | "circle" | "arrow" | "line" | "eraser" | "text";
+export type ToolType = "select" | "pencil" | "rectangle" | "circle" | "arrow" | "line" | "eraser" | "text" | "resize";
+export type HandleTypes = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type Element = {
   id: string; // ID único para cada elemento
   type: ToolType;

@@ -6,14 +6,17 @@ import { usePencil } from '@/tools/usePencil';
 import { useRectangle } from '@/tools/useRectangle';
 import { useSelection } from '@/tools/useSelection';
 import { useQuadtree } from '@/tools/useQuadtree'; // Importar el hook useQuadtree
+import CanvasHandles from './CanvasHandles';
+
 
 const Canvas = () => {
   const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const interactionCanvasRef = useRef<HTMLCanvasElement>(null);
   const backgroundCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const interactionCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const { elements } = useCanvasStore();
+  const { elements, selectedElements } = useCanvasStore();
   const { selectedTool } = useToolsStore();
+
 
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
@@ -137,7 +140,8 @@ const Canvas = () => {
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseLeave}
       />
-    </div>
+      <CanvasHandles selectedElements={selectedElements} interactionCanvasRef={interactionCanvasRef} interactionCtxRef={interactionCtxRef}></CanvasHandles>
+    </div >
   );
 };
 
