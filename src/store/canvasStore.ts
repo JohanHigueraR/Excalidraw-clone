@@ -37,8 +37,9 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   // Actualizar un elemento existente
   updateElement: (id, data) =>
     set((state) => {
+      console.log(data)
       const updatedElements = state.elements.map((element) =>
-        element.id === id ? { ...element, data } : element
+        element.id === id ? data : element
       );
       return { elements: updatedElements };
     }),

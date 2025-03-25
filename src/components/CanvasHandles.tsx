@@ -1,34 +1,6 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Element } from '@/types/types';
 import useCanvasEditor from '@/tools/useCanvasEditor';
-
-const calculateBoundingBox = (elements: Element[]) => {
-  if (elements.length === 0) {
-    return { x: 0, y: 0, width: 0, height: 0 };
-  }
-
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  elements.forEach((element) => {
-    const { x, y, width, height } = element.points;
-    minX = Math.min(minX, x);
-    minY = Math.min(minY, y);
-    maxX = Math.max(maxX, x + width);
-    maxY = Math.max(maxY, y + height);
-  });
-
-  // Añadir un margen de 10px alrededor del contenido
-  const margin = 10;
-  return {
-    x: minX - margin,
-    y: minY - margin,
-    width: maxX - minX + 2 * margin,
-    height: maxY - minY + 2 * margin,
-  };
-};
 
 interface CanvasHandlesProps {
   selectedElements: Element[];
@@ -37,20 +9,18 @@ interface CanvasHandlesProps {
 }
 
 const CanvasHandles: React.FC<CanvasHandlesProps> = ({ selectedElements, interactionCanvasRef, interactionCtxRef }) => {
-  const { handleResizeStart, isResizing } = useCanvasEditor(selectedElements, interactionCanvasRef, interactionCtxRef);
+  const { handleResizeStart, isResizing, editingBox } = useCanvasEditor(selectedElements, interactionCanvasRef, interactionCtxRef);
 
   if (selectedElements.length === 0) return null;
-
-  const boundingBox = calculateBoundingBox(selectedElements);
 
   return (
     <div
       style={{
         position: 'absolute',
-        left: boundingBox.x,
-        top: boundingBox.y,
-        width: boundingBox.width,
-        height: boundingBox.height,
+        left: editingBox.x,
+        top: editingBox.y,
+        width: editingBox.width,
+        height: editingBox.height,
         border: '2px dashed blue',
         zIndex: 50,
       }}

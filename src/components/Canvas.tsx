@@ -59,6 +59,8 @@ const Canvas = () => {
 
   // Redibujar el canvas de fondo cuando cambian los elementos
   useEffect(() => {
+    console.log('dibujando en el canvas principal', elements)
+    
     const ctx = backgroundCtxRef.current;
     if (!ctx) return;
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
