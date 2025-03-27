@@ -1,16 +1,16 @@
 import React from 'react';
 import { Element } from '@/types/types';
-import useCanvasEditor from '@/tools/useCanvasEditor';
+import useCanvasEditor from '@/app/hooks/useCanvasEditor';
+import { useCanvasStore } from '@/store/canvasStore';
 
 interface CanvasHandlesProps {
-  selectedElements: Element[];
   interactionCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   interactionCtxRef: React.RefObject<CanvasRenderingContext2D | null>;
 }
 
-const CanvasHandles: React.FC<CanvasHandlesProps> = ({ selectedElements, interactionCanvasRef, interactionCtxRef }) => {
-  const { handleResizeStart, isResizing, editingBox } = useCanvasEditor(selectedElements, interactionCanvasRef, interactionCtxRef);
-
+const CanvasHandles: React.FC<CanvasHandlesProps> = ({ interactionCanvasRef, interactionCtxRef }) => {
+  const { handleResizeStart, isResizing, editingBox } = useCanvasEditor(interactionCanvasRef, interactionCtxRef);
+  const { selectedElements } = useCanvasStore();
   if (selectedElements.length === 0) return null;
 
   return (

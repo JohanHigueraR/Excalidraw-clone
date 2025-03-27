@@ -1,15 +1,26 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
 import { Element, ToolType } from '../types/types';
+import { devtools } from 'zustand/middleware';
 
 
 type CanvasState = {
   tool: ToolType;
   elements: Element[];
+  temporaryElements: Element[];
   selectedElements: Element[];
   history: Element[][]; // Para manejar el historial de acciones
+  viewState: {
+    zoom: number;
+    offsetX: number;
+    offsetY: number;
+  };
+  setViewState: (viewState: CanvasState['viewState']) => void;
   setTool: (tool: ToolType) => void;
   setSelectedElements: (elements: Element[]) => void;
+  clearSelectedElements: () => void;
+  setTemporaryElements: (elements: Element[]) => void;
+  clearTemporaryElements: () => void;
   addElement: (element: Omit<Element, 'id'>) => void; // No necesitas pasar el ID manualmente
   updateElement: (id: string, data: any) => void; // Actualizar un elemento existente
   deleteElement: (id: string) => void; // Eliminar un elemento existente
@@ -17,11 +28,21 @@ type CanvasState = {
   redo: () => void;
 };
 
-export const useCanvasStore = create<CanvasState>((set) => ({
+export const useCanvasStore = create<CanvasState>()(devtools((set) => ({
   tool: 'pencil',
+  temporaryElements: [],
+  clearTemporaryElements: () => set({ temporaryElements: [] }),
+  setTemporaryElements: (elements) => set({ temporaryElements: elements }),
+  clearSelectedElements: () => set({ selectedElements: [] }),
   elements: [],
   history: [],
+  viewState: {
+    zoom: 1.0,
+    offsetX: 0,
+    offsetY: 0
+  },
   selectedElements: [],
+  setViewState: (viewState) => set({ viewState }),
   setTool: (tool) => set({ tool }),
   setSelectedElements: (elements) => set({ selectedElements: elements }),
 
@@ -37,7 +58,6 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   // Actualizar un elemento existente
   updateElement: (id, data) =>
     set((state) => {
-      console.log(data)
       const updatedElements = state.elements.map((element) =>
         element.id === id ? data : element
       );
@@ -66,4 +86,4 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   redo: () => {
     // Implementar lógica para "rehacer" si es necesario
   },
-}));
+})));

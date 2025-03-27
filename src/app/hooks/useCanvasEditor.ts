@@ -2,6 +2,7 @@ import { RefObject, useState, useEffect, useCallback, useRef } from 'react';
 import { useCanvasStore } from '@/store/canvasStore';
 import { Element, HandleTypes } from '@/types/types';
 const calculateBoundingBox = (elements: Element[]) => {
+  console.log('calculando bounding box de', elements)
   if (elements.length === 0) {
     return { x: 0, y: 0, width: 0, height: 0 };
   }
@@ -30,11 +31,10 @@ const calculateBoundingBox = (elements: Element[]) => {
 };
 
 const useCanvasEditor = (
-  selectedElements: Element[],
   interactionCanvasRef: RefObject<HTMLCanvasElement | null>,
   interactionCtxRef: RefObject<CanvasRenderingContext2D | null>
 ) => {
-  const { updateElement, deleteElement } = useCanvasStore();
+  const { updateElement, setSelectedElements, setTemporaryElements, clearTemporaryElements, clearSelectedElements, selectedElements } = useCanvasStore();
   const resize = useRef<{ x: number; y: number; width: number; height: number } | null>(null);
   const [isResizing, setIsResizing] = useState(false);
   const [initialMousePosition, setInitialMousePosition] = useState({ x: 0, y: 0 });
@@ -47,7 +47,6 @@ const useCanvasEditor = (
     if (selectedElements.length > 0) {
       const boundingBox = calculateBoundingBox(selectedElements);
       setEditingBox(boundingBox); // Inicializar el cuadro de edición
-      console.log("Initializing editingBox:", boundingBox); // Depuración
     } else {
       setEditingBox({ x: 0, y: 0, width: 0, height: 0 }); // Limpiar el cuadro de edición si no hay elementos seleccionados
     }
@@ -60,9 +59,8 @@ const useCanvasEditor = (
     setInitialMousePosition({ x: e.clientX, y: e.clientY });
     const boundingBox = calculateBoundingBox(selectedElements);
     setInitialBoundingBox(boundingBox);
+    setTemporaryElements(selectedElements); // Almacenar los elementos seleccionados en el store
     setEditingBox(boundingBox); // Actualizar el cuadro de edición al iniciar el redimensionamiento
-   
-    console.log("Resize started, editingBox updated:", boundingBox); // Depuración
   };
 
   const handleResize = useCallback((e: MouseEvent) => {
@@ -131,36 +129,43 @@ const useCanvasEditor = (
 
   const handleResizeEnd = useCallback(() => {
     if (!isResizing || !handleType || !interactionCtxRef.current || !resize.current) return;
-
-    // Limpiar el canvas de interacción
+  
     const ctx = interactionCtxRef.current;
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-    // Calcular la relación de escalado
+  
     const scaleX = resize.current.width / initialBoundingBox.width;
     const scaleY = resize.current.height / initialBoundingBox.height;
-
-    // Actualizar los elementos en el store (canvas principal)
-    selectedElements.forEach((element) => {
+  
+    // 1. Primero actualiza todos los elementos
+    const updatedElements = selectedElements.map((element) => {
       const { x, y, width, height } = element.points;
       const updatedX = resize.current!.x + (x - initialBoundingBox.x) * scaleX;
       const updatedY = resize.current!.y + (y - initialBoundingBox.y) * scaleY;
       const updatedWidth = width * scaleX;
       const updatedHeight = height * scaleY;
-
-      updateElement(element.id, {
+  
+      return {
         ...element,
         data: { x: updatedX, y: updatedY, width: updatedWidth, height: updatedHeight },
         points: { x: updatedX, y: updatedY, width: updatedWidth, height: updatedHeight },
-      });
+      };
     });
-
-    // Finalizar el redimensionamiento
+-  
+    // 2. Actualiza el store en batch
+    updatedElements.forEach(element => updateElement(element.id, element));
+    
+    // 3. Luego actualiza los elementos seleccionados
+    setSelectedElements(updatedElements);
+  
+    // 4. Calcula el NUEVO bounding box basado en los elementos actualizados
+    const newBoundingBox = calculateBoundingBox(updatedElements);
+    setInitialBoundingBox(newBoundingBox); // <-- Esto es clave
+  
+    clearTemporaryElements();
     setIsResizing(false);
     setHandleType(null);
-    resize.current = null; // Limpiar resize.current
+    resize.current = null;
   }, [isResizing, handleType, initialBoundingBox, selectedElements, updateElement, interactionCtxRef]);
-
   // Efecto para manejar eventos de mouse globales
   useEffect(() => {
     if (isResizing) {

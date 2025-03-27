@@ -24,6 +24,13 @@ export type HandleTypes = "top-left" | "top-right" | "bottom-left" | "bottom-rig
 export type Element = {
   id: string; // ID único para cada elemento
   type: ToolType;
-  data: any; 
+  data: any;
   points: { x: number; y: number; width: number; height: number }; // Puntos de control para el trazo
+
+};
+export type Boundary = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 };

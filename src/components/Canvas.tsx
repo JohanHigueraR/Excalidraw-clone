@@ -1,151 +1,86 @@
 "use client";
-import React, { useEffect, useRef, useState } from 'react';
-import { useCanvasStore } from '@/store/canvasStore';
-import { useToolsStore } from '@/store/toolsStore';
-import { usePencil } from '@/tools/usePencil';
-import { useRectangle } from '@/tools/useRectangle';
-import { useSelection } from '@/tools/useSelection';
-import { useQuadtree } from '@/tools/useQuadtree'; // Importar el hook useQuadtree
-import CanvasHandles from './CanvasHandles';
-
+import React, { useEffect, useRef } from "react";
+import { useToolsStore } from "@/store/toolsStore";
+import { usePencil } from "@/tools/usePencil";
+import { useRectangle } from "@/tools/useRectangle";
+import { useSelection } from "@/tools/useSelection";
+import { useQuadtree } from "@/app/hooks/useQuadtree";
+import CanvasHandles from "./CanvasHandles";
+import { ZoomControls } from "./ZoomControl";
+import { useCanvasDrawing } from "@/app/hooks/useCanvasDrawing";
+import CanvasLayer from "./CanvasLayer";
+import { useCanvasSetup } from "@/app/hooks/useCanvasSetup";
+import { ZoomManager } from "./ZoomManager";
 
 const Canvas = () => {
-  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
-  const interactionCanvasRef = useRef<HTMLCanvasElement>(null);
+  // Cambiamos la definición para asegurar que nunca sea null
+  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null!); // <-- Usamos el operador non-null assertion
+  const interactionCanvasRef = useRef<HTMLCanvasElement>(null!); // <-- Igual aquí
+
+
+  const { canvasSize, centerPosition } = useCanvasSetup();
+  const { selectedTool } = useToolsStore();
+  const quadtreeRef = useQuadtree();
+
+  // Obtener contextos
   const backgroundCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const interactionCtxRef = useRef<CanvasRenderingContext2D | null>(null);
-  const { elements, selectedElements } = useCanvasStore();
-  const { selectedTool } = useToolsStore();
 
-
-  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-
-  // Usar el hook useQuadtree para manejar el Quadtree
-  const quadtreeRef = useQuadtree(elements);
-
-  // Inicializar los contextos de los canvases y actualizar el tamaño
+  // Inicializar contextos cuando las refs estén listas
   useEffect(() => {
-    const backgroundCanvas = backgroundCanvasRef.current;
-    const interactionCanvas = interactionCanvasRef.current;
-
-    if (backgroundCanvas && interactionCanvas) {
-      const backgroundCtx = backgroundCanvas.getContext('2d');
-      const interactionCtx = interactionCanvas.getContext('2d');
-
-      if (backgroundCtx && interactionCtx) {
-        backgroundCtxRef.current = backgroundCtx;
-        interactionCtxRef.current = interactionCtx;
-
-        setCanvasSize({
-          width: window.innerWidth,
-          height: window.innerHeight,
-        });
-
-        const handleResize = () => {
-          setCanvasSize({
-            width: window.innerWidth,
-            height: window.innerHeight,
-          });
-        };
-
-        window.addEventListener('resize', handleResize);
-
-        return () => {
-          window.removeEventListener('resize', handleResize);
-        };
-      }
-    }
+    backgroundCtxRef.current = backgroundCanvasRef.current.getContext('2d');
+    interactionCtxRef.current = interactionCanvasRef.current.getContext('2d');
   }, []);
 
-  // Redibujar el canvas de fondo cuando cambian los elementos
-  useEffect(() => {
-    console.log('dibujando en el canvas principal', elements)
-    
-    const ctx = backgroundCtxRef.current;
-    if (!ctx) return;
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+  // Configurar el dibujo del fondo - ahora sin error de tipos
+  useCanvasDrawing(backgroundCanvasRef, quadtreeRef);
 
-    elements.forEach((element) => {
-      if (element.type === 'pencil') {
-        const path = new Path2D(element.data);
-        ctx.fill(path);
-      } else if (element.type === 'rectangle') {
-        ctx.strokeRect(element.data.x, element.data.y, element.data.width, element.data.height);
-      }
-    });
-  }, [elements]);
+  // Handlers de herramientas
+  const pencilHandlers = usePencil(interactionCanvasRef, interactionCtxRef);
+  const rectangleHandlers = useRectangle(interactionCanvasRef, interactionCtxRef);
+  const selectHandlers = useSelection(interactionCanvasRef, interactionCtxRef, quadtreeRef);
 
-  const pencilHandlers = usePencil(
-    interactionCanvasRef as React.RefObject<HTMLCanvasElement>,
-    interactionCtxRef as React.RefObject<CanvasRenderingContext2D>
-  );
-  const rectangleHandlers = useRectangle(
-    interactionCanvasRef as React.RefObject<HTMLCanvasElement>,
-    interactionCtxRef as React.RefObject<CanvasRenderingContext2D>
-  );
-  const selectHandlers = useSelection(
-    interactionCanvasRef as React.RefObject<HTMLCanvasElement>,
-    interactionCtxRef as React.RefObject<CanvasRenderingContext2D>,
-    quadtreeRef // Pasar el Quadtree al hook useSelection
-  );
-
-  const getHandlers = () => {
+  const currentHandlers = (() => {
     switch (selectedTool) {
-      case 'pencil':
-        return {
-          ...pencilHandlers,
-          onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => {
-            pencilHandlers.onMouseDown(e);
-          },
-        };
-      case 'rectangle':
-        return {
-          ...rectangleHandlers,
-          onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => {
-            rectangleHandlers.onMouseDown(e);
-          },
-        };
-      case 'select':
-        return {
-          ...selectHandlers,
-          onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => {
-            selectHandlers.onMouseDown(e);
-          },
-        };
-      default:
-        return {
-          ...selectHandlers,
-          onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => {
-            selectHandlers.onMouseDown(e);
-          },
-        };
+      case "pencil": return pencilHandlers;
+      case "rectangle": return rectangleHandlers;
+      case "select": return selectHandlers;
+      default: return selectHandlers;
     }
-  };
-
-  const { onMouseDown, onMouseMove, onMouseUp, onMouseLeave } = getHandlers();
+  })();
 
   return (
-    <div className="relative w-full h-full">
-      <canvas
+
+    <ZoomManager>
+      <CanvasLayer
         ref={backgroundCanvasRef}
-        className="absolute top-0 left-0 z-10 bg-gray-400"
+        zIndex={10}
         width={canvasSize.width}
         height={canvasSize.height}
+        className="bg-gray-400"
+        onContextReady={(ctx) => {
+          backgroundCtxRef.current = ctx;
+        }}
       />
-      <canvas
+
+      <CanvasLayer
         ref={interactionCanvasRef}
-        className="absolute top-0 left-0 z-20"
+        zIndex={20}
         width={canvasSize.width}
         height={canvasSize.height}
-        onMouseDown={onMouseDown}
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onMouseLeave={onMouseLeave}
+        handlers={currentHandlers}
+        onContextReady={(ctx) => {
+          interactionCtxRef.current = ctx;
+        }}
       />
-      <CanvasHandles selectedElements={selectedElements} interactionCanvasRef={interactionCanvasRef} interactionCtxRef={interactionCtxRef}></CanvasHandles>
-    </div >
+
+      <CanvasHandles
+        interactionCanvasRef={interactionCanvasRef}
+        interactionCtxRef={interactionCtxRef}
+      />
+      <ZoomControls />
+    </ZoomManager>
   );
 };
 
 export default Canvas;
-
