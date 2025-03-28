@@ -4,7 +4,8 @@ import { Quadtree } from "@/app/hooks/useQuadtree";
 
 export const useCanvasDrawing = (
   canvasRef: React.RefObject<HTMLCanvasElement>,
-  quadtreeRef: React.RefObject<Quadtree | null>
+  quadtreeRef: React.RefObject<Quadtree | null>,
+  applyZoomTransformation?: () => void
 ) => {
   const { elements, temporaryElements } = useCanvasStore();
 
@@ -44,7 +45,7 @@ export const useCanvasDrawing = (
   }, []);
 
   const drawElements = useCallback((ctx: CanvasRenderingContext2D) => {
-    console.log('Drawing elements en el canvas principal');
+    console.log(elements);
     const elementsToDraw = elements.filter(
       el => !temporaryElements.some(tempEl => tempEl.id === el.id)
     );
@@ -64,12 +65,30 @@ export const useCanvasDrawing = (
     });
   }, [elements, temporaryElements]);
 
-  useEffect(() => {
+  const drawAll = useCallback(() => {
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx || !quadtreeRef.current) return;
 
+    // Limpiar canvas y aplicar transformaciones de zoom si existen
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+    
+    if (applyZoomTransformation) {
+      applyZoomTransformation();
+    }
+    
+    // Dibujar contenido
     drawQuadtree(ctx, quadtreeRef.current);
     drawElements(ctx);
-  }, [canvasRef, quadtreeRef, drawQuadtree, drawElements]);
+    
+    ctx.restore();
+  }, [canvasRef, quadtreeRef, drawQuadtree, drawElements, applyZoomTransformation]);
+
+  useEffect(() => {
+    drawAll();
+  }, [drawAll]);
+
+  // Retornamos drawAll para poder llamarlo manualmente cuando sea necesario
+  return { drawAll };
 };

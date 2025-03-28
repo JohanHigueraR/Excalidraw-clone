@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import { Element, ToolType } from '../types/types';
+import { Element, ToolType, ViewState} from '../types/types';
 import { devtools } from 'zustand/middleware';
 
 
@@ -10,12 +10,10 @@ type CanvasState = {
   temporaryElements: Element[];
   selectedElements: Element[];
   history: Element[][]; // Para manejar el historial de acciones
-  viewState: {
-    zoom: number;
-    offsetX: number;
-    offsetY: number;
-  };
-  setViewState: (viewState: CanvasState['viewState']) => void;
+  zoom: number;
+  offset: { x: number; y: number };
+  setZoom: (zoom: number) => void;
+  setOffset: (offset: { x: number; y: number }) => void;
   setTool: (tool: ToolType) => void;
   setSelectedElements: (elements: Element[]) => void;
   clearSelectedElements: () => void;
@@ -36,13 +34,11 @@ export const useCanvasStore = create<CanvasState>()(devtools((set) => ({
   clearSelectedElements: () => set({ selectedElements: [] }),
   elements: [],
   history: [],
-  viewState: {
-    zoom: 1.0,
-    offsetX: 0,
-    offsetY: 0
-  },
   selectedElements: [],
-  setViewState: (viewState) => set({ viewState }),
+  zoom: 100,
+  offset: { x: 0, y: 0 },
+  setZoom: (zoom) => set({ zoom }),
+  setOffset: (offset) => set({ offset }),
   setTool: (tool) => set({ tool }),
   setSelectedElements: (elements) => set({ selectedElements: elements }),
 

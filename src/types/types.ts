@@ -34,3 +34,8 @@ export type Boundary = {
   width: number;
   height: number;
 };
+export type ViewState = {
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
+}

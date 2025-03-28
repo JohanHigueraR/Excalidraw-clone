@@ -10,7 +10,10 @@ import { ZoomControls } from "./ZoomControl";
 import { useCanvasDrawing } from "@/app/hooks/useCanvasDrawing";
 import CanvasLayer from "./CanvasLayer";
 import { useCanvasSetup } from "@/app/hooks/useCanvasSetup";
-import { ZoomManager } from "./ZoomManager";
+import { useZoom } from "@/app/hooks/useZoom";
+import { useCanvasStore } from "@/store/canvasStore";
+
+
 
 const Canvas = () => {
   // Cambiamos la definición para asegurar que nunca sea null
@@ -20,11 +23,15 @@ const Canvas = () => {
 
   const { canvasSize, centerPosition } = useCanvasSetup();
   const { selectedTool } = useToolsStore();
+  const { zoom, offset } = useCanvasStore();
   const quadtreeRef = useQuadtree();
 
   // Obtener contextos
   const backgroundCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const interactionCtxRef = useRef<CanvasRenderingContext2D | null>(null);
+
+  useZoom(backgroundCanvasRef);
+
 
   // Inicializar contextos cuando las refs estén listas
   useEffect(() => {
@@ -33,7 +40,12 @@ const Canvas = () => {
   }, []);
 
   // Configurar el dibujo del fondo - ahora sin error de tipos
-  useCanvasDrawing(backgroundCanvasRef, quadtreeRef);
+  const { applyZoomTransformation } = useZoom(backgroundCanvasRef);
+  const { drawAll } = useCanvasDrawing(backgroundCanvasRef, quadtreeRef, applyZoomTransformation);
+
+  useEffect(() => {
+    drawAll();
+  }, [zoom, offset]); // Dependencias del zoom
 
   // Handlers de herramientas
   const pencilHandlers = usePencil(interactionCanvasRef, interactionCtxRef);
@@ -51,7 +63,7 @@ const Canvas = () => {
 
   return (
 
-    <ZoomManager>
+    <>
       <CanvasLayer
         ref={backgroundCanvasRef}
         zIndex={10}
@@ -79,7 +91,7 @@ const Canvas = () => {
         interactionCtxRef={interactionCtxRef}
       />
       <ZoomControls />
-    </ZoomManager>
+    </>
   );
 };
 
