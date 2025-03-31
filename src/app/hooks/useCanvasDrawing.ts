@@ -1,6 +1,7 @@
 import { useCanvasStore } from "@/store/canvasStore";
 import { useCallback, useEffect } from "react";
 import { Quadtree } from "@/app/hooks/useQuadtree";
+import { showQuadtree } from "../globalConfig";
 
 export const useCanvasDrawing = (
   canvasRef: React.RefObject<HTMLCanvasElement>,
@@ -45,7 +46,6 @@ export const useCanvasDrawing = (
   }, []);
 
   const drawElements = useCallback((ctx: CanvasRenderingContext2D) => {
-    console.log(elements);
     const elementsToDraw = elements.filter(
       el => !temporaryElements.some(tempEl => tempEl.id === el.id)
     );
@@ -66,6 +66,7 @@ export const useCanvasDrawing = (
   }, [elements, temporaryElements]);
 
   const drawAll = useCallback(() => {
+
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx || !quadtreeRef.current) return;
 
@@ -79,7 +80,9 @@ export const useCanvasDrawing = (
     }
     
     // Dibujar contenido
-    drawQuadtree(ctx, quadtreeRef.current);
+    if(showQuadtree) {
+      drawQuadtree(ctx, quadtreeRef.current);
+    }
     drawElements(ctx);
     
     ctx.restore();

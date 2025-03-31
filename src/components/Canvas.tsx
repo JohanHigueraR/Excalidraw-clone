@@ -40,7 +40,7 @@ const Canvas = () => {
   }, []);
 
   // Configurar el dibujo del fondo - ahora sin error de tipos
-  const { applyZoomTransformation } = useZoom(backgroundCanvasRef);
+  const { applyZoomTransformation,canvasToScreen, screenToCanvas } = useZoom(backgroundCanvasRef);
   const { drawAll } = useCanvasDrawing(backgroundCanvasRef, quadtreeRef, applyZoomTransformation);
 
   useEffect(() => {
@@ -48,8 +48,8 @@ const Canvas = () => {
   }, [zoom, offset]); // Dependencias del zoom
 
   // Handlers de herramientas
-  const pencilHandlers = usePencil(interactionCanvasRef, interactionCtxRef);
-  const rectangleHandlers = useRectangle(interactionCanvasRef, interactionCtxRef);
+  const pencilHandlers = usePencil(interactionCanvasRef, interactionCtxRef, screenToCanvas, canvasToScreen , zoom);
+  const rectangleHandlers = useRectangle(interactionCanvasRef, interactionCtxRef, screenToCanvas , canvasToScreen);
   const selectHandlers = useSelection(interactionCanvasRef, interactionCtxRef, quadtreeRef);
 
   const currentHandlers = (() => {

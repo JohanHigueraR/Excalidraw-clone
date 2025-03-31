@@ -6,33 +6,60 @@ import { calculateBoundingBox } from '@/utils/calculateBoundingBox';
 
 export const usePencil = (
   interactionCanvasRef: RefObject<HTMLCanvasElement>,
-  interactionCtxRef: RefObject<CanvasRenderingContext2D | null>
+  interactionCtxRef: RefObject<CanvasRenderingContext2D | null>,
+  screenToCanvas: (point: { x: number; y: number }) => { x: number; y: number },
+  canvasToScreen: (point: { x: number; y: number }) => { x: number; y: number },
+  zoom: number
 ) => {
   const isDrawing = useRef(false);
-  const points = useRef<{ x: number; y: number }[]>([]);
+  const canvasPoints = useRef<{ x: number; y: number }[]>([]);
+  const screenPoints = useRef<{ x: number; y: number }[]>([]);
+
+ // Versión con tamaño mínimo/máximo
+const getVisualConsistentSize = (baseSize: number) => {
+  const zoomFactor = zoom / 100;
+  const calculatedSize = baseSize / zoomFactor;
+  console.log('calculatedSize', calculatedSize)
+  return calculatedSize
+};
 
   const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!interactionCanvasRef.current || !interactionCtxRef.current) return;
+    
     isDrawing.current = true;
-    const { offsetX, offsetY } = e.nativeEvent;
-    points.current = [{ x: offsetX, y: offsetY }];
+    const canvasPoint = screenToCanvas({
+      x: e.nativeEvent.offsetX,
+      y: e.nativeEvent.offsetY
+    });
+    const screenPoint = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
+    
+    canvasPoints.current = [canvasPoint];
+    screenPoints.current = [screenPoint];
   };
 
   const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isDrawing.current || !interactionCanvasRef.current || !interactionCtxRef.current) return;
-    const { offsetX, offsetY } = e.nativeEvent;
-    points.current.push({ x: offsetX, y: offsetY });
+    
+    const canvasPoint = screenToCanvas({
+      x: e.nativeEvent.offsetX,
+      y: e.nativeEvent.offsetY
+    });
+    const screenPoint = { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY };
+    
+    canvasPoints.current.push(canvasPoint);
+    screenPoints.current.push(screenPoint);
+    
     drawStroke();
   };
 
   const onMouseUp = () => {
-    if (!isDrawing.current || !interactionCtxRef.current || points.current.length === 0) return;
+    if (!isDrawing.current || !interactionCtxRef.current || canvasPoints.current.length === 0) return;
     isDrawing.current = false;
 
     const stroke = getStroke(
-      points.current.map((p) => [p.x, p.y]),
+      canvasPoints.current.map((p) => [p.x, p.y]),
       {
-        size: 8,
+        size:getVisualConsistentSize(8),
         thinning: 0.5,
         smoothing: 0.5,
         streamline: 0.5,
@@ -40,41 +67,41 @@ export const usePencil = (
     );
 
     const pathData = getSvgPathFromStroke(stroke);
-    const boundingBox = calculateBoundingBox(points.current);
+    const boundingBox = calculateBoundingBox(canvasPoints.current);
+    
     useCanvasStore.getState().addElement({
       type: 'pencil',
       data: pathData,
       points: boundingBox,
     });
 
-    points.current = [];
+    canvasPoints.current = [];
+    screenPoints.current = [];
   };
 
   const onMouseLeave = onMouseUp;
 
   const drawStroke = () => {
-    if (!interactionCtxRef.current) return;
+    if (!interactionCtxRef.current || screenPoints.current.length === 0) return;
     const ctx = interactionCtxRef.current;
 
     // Limpiar solo el canvas de interacción
     ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
-    // Dibujar el trazo actual
-    if (points.current.length > 0) {
-      const stroke = getStroke(
-        points.current.map((p) => [p.x, p.y]),
-        {
-          size: 8,
-          thinning: 0.5,
-          smoothing: 0.5,
-          streamline: 0.5,
-        }
-      );
+    // Dibujar el trazo actual usando puntos de pantalla para la visualización temporal
+    const stroke = getStroke(
+      screenPoints.current.map((p) => [p.x, p.y]),
+      {
+        size:8,
+        thinning: 0.5,
+        smoothing: 0.5,
+        streamline: 0.5,
+      }
+    );
 
-      const pathData = getSvgPathFromStroke(stroke);
-      const path = new Path2D(pathData);
-      ctx.fill(path);
-    }
+    const pathData = getSvgPathFromStroke(stroke);
+    const path = new Path2D(pathData);
+    ctx.fill(path);
   };
 
   return { onMouseDown, onMouseMove, onMouseUp, onMouseLeave };

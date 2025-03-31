@@ -96,12 +96,28 @@ export const useZoom = (canvasRef: React.RefObject<HTMLCanvasElement>) => {
     
     setZoom(newZoom);
   }, [zoom, offset, setZoom, setOffset]);
+  const screenToCanvas = useCallback((point: { x: number; y: number }) => {
+    return {
+      x: (point.x - offset.x) / zoomFactor,
+      y: (point.y - offset.y) / zoomFactor
+    };
+  }, [offset, zoomFactor]);
+
+  // Función para convertir coordenadas del canvas a coordenadas de pantalla
+  const canvasToScreen = useCallback((point: { x: number; y: number }) => {
+    return {
+      x: point.x * zoomFactor + offset.x,
+      y: point.y * zoomFactor + offset.y
+    };
+  }, [offset, zoomFactor]);
 
   return {
     applyZoomTransformation,
     zoom,         // Valor actual en porcentaje (10-200)
     zoomFactor,   // Factor de escala (0.1-2.0)
     offset,
-    changeZoom    // Función para controlar el zoom programáticamente
+    changeZoom,
+    screenToCanvas,
+    canvasToScreen,
   };
 };
