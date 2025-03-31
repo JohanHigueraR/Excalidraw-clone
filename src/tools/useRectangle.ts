@@ -57,8 +57,9 @@ export const useRectangle = (
   };
 
   const onMouseUp = () => {
-    if (!isDrawing.current || !rect.current?.canvasRect) return;
+    if (!isDrawing.current || !interactionCtxRef.current || !rect.current?.canvasRect) return;
     isDrawing.current = false;
+    const ctx = interactionCtxRef.current;
 
     // Guardar el rectángulo en coordenadas de canvas
     useCanvasStore.getState().addElement({
@@ -66,7 +67,7 @@ export const useRectangle = (
       data: rect.current.canvasRect,
       points: rect.current.canvasRect
     });
-
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     rect.current = { canvasRect: null, screenRect: null };
   };
 

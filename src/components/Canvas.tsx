@@ -30,7 +30,7 @@ const Canvas = () => {
   const backgroundCtxRef = useRef<CanvasRenderingContext2D | null>(null);
   const interactionCtxRef = useRef<CanvasRenderingContext2D | null>(null);
 
-  useZoom(backgroundCanvasRef);
+  const {changeZoom} = useZoom(backgroundCanvasRef);
 
 
   // Inicializar contextos cuando las refs estén listas
@@ -50,7 +50,7 @@ const Canvas = () => {
   // Handlers de herramientas
   const pencilHandlers = usePencil(interactionCanvasRef, interactionCtxRef, screenToCanvas, canvasToScreen , zoom);
   const rectangleHandlers = useRectangle(interactionCanvasRef, interactionCtxRef, screenToCanvas , canvasToScreen);
-  const selectHandlers = useSelection(interactionCanvasRef, interactionCtxRef, quadtreeRef);
+  const selectHandlers = useSelection(interactionCanvasRef, interactionCtxRef, quadtreeRef, screenToCanvas, canvasToScreen);
 
   const currentHandlers = (() => {
     switch (selectedTool) {
@@ -90,7 +90,7 @@ const Canvas = () => {
         interactionCanvasRef={interactionCanvasRef}
         interactionCtxRef={interactionCtxRef}
       />
-      <ZoomControls />
+      <ZoomControls handleZoom={changeZoom} />
     </>
   );
 };

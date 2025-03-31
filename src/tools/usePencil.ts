@@ -54,6 +54,7 @@ const getVisualConsistentSize = (baseSize: number) => {
 
   const onMouseUp = () => {
     if (!isDrawing.current || !interactionCtxRef.current || canvasPoints.current.length === 0) return;
+    const ctx = interactionCtxRef.current;
     isDrawing.current = false;
 
     const stroke = getStroke(
@@ -74,7 +75,7 @@ const getVisualConsistentSize = (baseSize: number) => {
       data: pathData,
       points: boundingBox,
     });
-
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     canvasPoints.current = [];
     screenPoints.current = [];
   };

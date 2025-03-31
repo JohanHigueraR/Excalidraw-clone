@@ -6,16 +6,16 @@ import { Element, Boundary } from '@/types/types';
 export const useSelection = (
   interactionCanvasRef: RefObject<HTMLCanvasElement>,
   interactionCtxRef: RefObject<CanvasRenderingContext2D | null>,
-  quadtreeRef: RefObject<Quadtree | null>
+  quadtreeRef: RefObject<Quadtree | null>,
+  screenToCanvas: (point: { x: number; y: number }) => { x: number; y: number },
+  canvasToScreen: (point: { x: number; y: number }) => { x: number; y: number }
 ) => {
   const { setSelectedElements, elements } = useCanvasStore();
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionRect, setSelectionRect] = useState<{
-    startX: number;
-    startY: number;
-    endX: number;
-    endY: number;
-  } | null>(null);
+    canvasRect: Boundary | null;
+    screenRect: Boundary | null;
+  }>({ canvasRect: null, screenRect: null });
 
   const getCurrentElements = (selected: Element[]) => {
     return selected.map(selectedEl => 
@@ -24,103 +24,92 @@ export const useSelection = (
   };
 
   const isFullyContained = (selection: Boundary, element: Element): boolean => {
-    const elemBounds = {
-      x: element.points.x,
-      y: element.points.y,
-      width: element.points.width,
-      height: element.points.height
-    };
-
     return (
-      elemBounds.x >= selection.x &&
-      elemBounds.x + elemBounds.width <= selection.x + selection.width &&
-      elemBounds.y >= selection.y &&
-      elemBounds.y + elemBounds.height <= selection.y + selection.height
+      element.points.x >= selection.x &&
+      element.points.x + element.points.width <= selection.x + selection.width &&
+      element.points.y >= selection.y &&
+      element.points.y + element.points.height <= selection.y + selection.height
     );
   };
 
   const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!interactionCanvasRef.current || !interactionCtxRef.current || !quadtreeRef.current) return;
 
-    const { offsetX, offsetY } = e.nativeEvent;
+    const canvasPoint = screenToCanvas({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
     setIsSelecting(true);
     setSelectionRect({
-      startX: offsetX,
-      startY: offsetY,
-      endX: offsetX,
-      endY: offsetY,
+      canvasRect: { x: canvasPoint.x, y: canvasPoint.y, width: 0, height: 0 },
+      screenRect: { x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY, width: 0, height: 0 }
     });
   };
 
   const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isSelecting || !interactionCanvasRef.current || !interactionCtxRef.current) return;
+    if (!isSelecting || !interactionCanvasRef.current || !interactionCtxRef.current || !selectionRect.canvasRect) return;
 
-    const { offsetX, offsetY } = e.nativeEvent;
-    setSelectionRect(prev => prev ? { ...prev, endX: offsetX, endY: offsetY } : null);
+    const canvasPoint = screenToCanvas({ x: e.nativeEvent.offsetX, y: e.nativeEvent.offsetY });
 
-    // Dibujar selección
-    const ctx = interactionCtxRef.current;
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-    
-    if (selectionRect) {
-      const { startX, startY, endX, endY } = selectionRect;
-      ctx.strokeStyle = 'rgba(0, 100, 255, 0.8)';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 3]);
-      ctx.strokeRect(
-        Math.min(startX, endX),
-        Math.min(startY, endY),
-        Math.abs(endX - startX),
-        Math.abs(endY - startY)
-      );
-      ctx.setLineDash([]);
-    }
+    // Rectángulo en espacio canvas
+    const canvasX = Math.min(selectionRect.canvasRect.x, canvasPoint.x);
+    const canvasY = Math.min(selectionRect.canvasRect.y, canvasPoint.y);
+    const canvasWidth = Math.abs(canvasPoint.x - selectionRect.canvasRect.x);
+    const canvasHeight = Math.abs(canvasPoint.y - selectionRect.canvasRect.y);
+
+    // Rectángulo en espacio pantalla
+    const screenStart = canvasToScreen({ x: selectionRect.canvasRect.x, y: selectionRect.canvasRect.y });
+    const screenX = Math.min(screenStart.x, e.nativeEvent.offsetX);
+    const screenY = Math.min(screenStart.y, e.nativeEvent.offsetY);
+    const screenWidth = Math.abs(e.nativeEvent.offsetX - screenStart.x);
+    const screenHeight = Math.abs(e.nativeEvent.offsetY - screenStart.y);
+
+    setSelectionRect({
+      canvasRect: { x: canvasX, y: canvasY, width: canvasWidth, height: canvasHeight },
+      screenRect: { x: screenX, y: screenY, width: screenWidth, height: screenHeight }
+    });
+
+    drawSelection();
   };
 
   const onMouseUp = () => {
-    if (!isSelecting || !selectionRect || !quadtreeRef.current) return;
+    if (!isSelecting || !selectionRect.canvasRect || !quadtreeRef.current) return;
     setIsSelecting(false);
 
-    const { startX, startY, endX, endY } = selectionRect;
-    const isClick = Math.abs(endX - startX) < 5 && Math.abs(endY - startY) < 5;
+    const { x, y, width, height } = selectionRect.canvasRect;
+    const isClick = width < 5 && height < 5;
 
-    const selectionBounds: Boundary = {
-      x: Math.min(startX, endX),
-      y: Math.min(startY, endY),
-      width: Math.abs(endX - startX),
-      height: Math.abs(endY - startY)
-    };
-
-    // Para clicks, usamos intersección en lugar de contención
     if (isClick) {
-      selectionBounds.x -= 5;
-      selectionBounds.y -= 5;
-      selectionBounds.width += 10;
-      selectionBounds.height += 10;
-      
-      // Consulta normal por intersección para clicks
-      const intersectedElements = quadtreeRef.current.query(selectionBounds);
+      // Expandir área para detectar un solo elemento en un clic
+      const clickBounds: Boundary = { x: x - 5, y: y - 5, width: 10, height: 10 };
+      const intersectedElements = quadtreeRef.current.query(clickBounds);
       setSelectedElements(getCurrentElements(intersectedElements));
     } else {
-      // Para selección por arrastre, filtramos solo los completamente contenidos
-      const allElementsInArea = quadtreeRef.current.query(selectionBounds);
-      const fullyContainedElements = allElementsInArea.filter(el => 
-        isFullyContained(selectionBounds, el)
-      );
+      // Buscar elementos completamente dentro del área de selección
+      const allElementsInArea = quadtreeRef.current.query(selectionRect.canvasRect);
+      const fullyContainedElements = allElementsInArea.filter(el => isFullyContained(selectionRect.canvasRect!, el));
       setSelectedElements(getCurrentElements(fullyContainedElements));
     }
 
     // Limpiar selección visual
-    setSelectionRect(null);
+    setSelectionRect({ canvasRect: null, screenRect: null });
     if (interactionCtxRef.current) {
-      interactionCtxRef.current.clearRect(0, 0, 
-        interactionCtxRef.current.canvas.width, 
-        interactionCtxRef.current.canvas.height
-      );
+      interactionCtxRef.current.clearRect(0, 0, interactionCtxRef.current.canvas.width, interactionCtxRef.current.canvas.height);
     }
   };
 
   const onMouseLeave = onMouseUp;
+
+  const drawSelection = () => {
+    if (!interactionCtxRef.current || !selectionRect.screenRect) return;
+    const ctx = interactionCtxRef.current;
+
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    const { x, y, width, height } = selectionRect.screenRect;
+    ctx.strokeStyle = 'rgba(0, 100, 255, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 3]);
+    ctx.strokeRect(x, y, width, height);
+    ctx.setLineDash([]);
+  };
 
   return { onMouseDown, onMouseMove, onMouseUp, onMouseLeave };
 };
